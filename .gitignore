@@ -25,3 +25,5 @@ coverage/
 dist/
 build/
 .cache/
+scripts/audit_local_projects.py
+scripts/__pycache__/audit_local_projects.cpython-313.pyc
