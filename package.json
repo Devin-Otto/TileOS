@@ -1,0 +1,16 @@
+{
+  "name": "tileos",
+  "private": true,
+  "version": "1.0.0",
+  "description": "TileOS: a glassmorphic portfolio OS for live project demos.",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "verify:secrets": "zsh ./scripts/secret-check.sh",
+    "verify:repo": "npm run verify:secrets && node --check server.js",
+    "verify:release": "zsh ./scripts/release-gate.sh"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

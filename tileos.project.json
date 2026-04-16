@@ -1,0 +1,10 @@
+{
+  "slug": "tileos",
+  "title": "TileOS",
+  "summary": "A glassmorphic portfolio OS for live project demos, personal draft workspaces, and admin-curated published tiles.",
+  "category": "Platform / Portfolio OS",
+  "visibility": "public",
+  "basePath": "/tileos/app",
+  "liveUrl": "https://devcandoit.com/tileos",
+  "healthPath": "/tileos/app/healthz"
+}

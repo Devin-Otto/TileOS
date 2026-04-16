@@ -1,0 +1,27 @@
+# OS / editor noise
+.DS_Store
+.vscode/
+.idea/
+
+# Dependencies / package managers
+node_modules/
+.npm/
+.pnpm-store/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+
+# Local data and runtime output
+data/state.json
+data/state.*.json
+*.log
+*.pid
+coverage/
+.nyc_output/
+
+# Build / cache output
+dist/
+build/
+.cache/

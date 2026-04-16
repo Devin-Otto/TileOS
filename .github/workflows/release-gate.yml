@@ -1,0 +1,32 @@
+name: TileOS Release Gate
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tileos-release-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify-release:
+    name: Verify release safety gate
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Run TileOS release gate
+        run: npm run verify:release
