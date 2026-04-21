@@ -45,7 +45,7 @@ function apiPath(pathname = "/") {
 const DEFAULT_CHAT = [
   {
     role: "assistant",
-    text: "TileOS kernel online. Gemini is active. Voice chat is available. Open a tile or ask me to build one."
+    text: "TileOS kernel online. Ask me to build a tile, or open one from the library."
   }
 ];
 
@@ -99,6 +99,20 @@ function useDebouncedEffect(effect, deps, delay) {
 
 function modelLabel(model) {
   return MODEL_THEMES[model]?.label || titleCase(model || "Gemini");
+}
+
+function normalizeGenerationState(data) {
+  const generation = data?.generation && typeof data.generation === "object" ? data.generation : null;
+  const geminiModel = Array.isArray(data?.models)
+    ? data.models.find((model) => model?.id === "gemini")
+    : null;
+  const available = Boolean(generation?.available ?? geminiModel?.available);
+  return {
+    provider: "gemini",
+    available,
+    mode: generation?.mode || (available ? "live" : "fallback"),
+    fallback: generation?.fallback || "local-template"
+  };
 }
 
 function sortProjects(list) {
@@ -209,6 +223,12 @@ function App() {
   const [memory, setMemory] = useState(DEFAULT_MEMORY);
   const [sessionAdmin, setSessionAdmin] = useState(false);
   const [availableModels, setAvailableModels] = useState([]);
+  const [generationState, setGenerationState] = useState({
+    provider: "gemini",
+    available: false,
+    mode: "fallback",
+    fallback: "local-template"
+  });
 
   const [sidebarCollapsed, setSidebarCollapsed] = useStoredState("tileos.sidebarCollapsed", false);
   const [activeModel, setActiveModel] = useStoredState("tileos.activeModel", "gemini");
@@ -253,6 +273,11 @@ function App() {
   const submitHandlerRef = useRef(null);
 
   const isAdmin = sessionAdmin;
+  const geminiLive = Boolean(generationState.available);
+  const generationHeadline = geminiLive ? "Live Gemini generation" : "Fallback demo generation";
+  const generationCaption = geminiLive
+    ? "Server-side Gemini keys are active. Chat builds use the live generator."
+    : "Gemini keys are not configured here. Tile creation still works through the built-in fallback generator.";
 
   useEffect(() => {
     document.documentElement.dataset.model = activeModel;
@@ -281,6 +306,7 @@ function App() {
         setMemory(data.memory || DEFAULT_MEMORY);
         setSessionAdmin(Boolean(data.session?.isAdmin));
         setAvailableModels(data.models || []);
+        setGenerationState(normalizeGenerationState(data));
         if (data.session?.isAdmin) {
           setLoginOpen(false);
         }
@@ -667,6 +693,7 @@ function App() {
     setMemory(data.memory || DEFAULT_MEMORY);
     setSessionAdmin(Boolean(data.session?.isAdmin));
     setAvailableModels(data.models || []);
+    setGenerationState(normalizeGenerationState(data));
   };
 
   const openProject = (project, mode = "preview") => {
@@ -1200,8 +1227,12 @@ function App() {
               Gemini
             </button>
           </div>
+          <div className=${`status ${geminiLive ? "status--success" : "status--warning"}`}>
+            <span className="status__dot"></span>
+            <span>${generationHeadline}</span>
+          </div>
           <div className="hint-line">
-            Gemini is the only active assistant. Everyone can create tiles; admin login unlocks edit and delete controls.
+            ${generationCaption} Everyone can create tiles; admin login unlocks publish, delete, and reorder controls.
           </div>
         </div>
 
@@ -1504,13 +1535,17 @@ function App() {
                 <div className="hero__label">Selected model</div>
                 <div className="hero__value">${modelLabel(activeModel)}</div>
                 <div className="hero__caption">
-                  The selector changes the visual accent and the chat personality, while secrets remain on the server.
+                  ${generationCaption} The selector changes the visual accent and the chat personality, while secrets remain on the server.
                 </div>
               </div>
               <div className="hero__mini-grid">
                 <div className="hero__mini">
                   <div className="hero__mini-number">${sessionAdmin ? "Admin" : "Viewer"}</div>
                   <div className="hero__mini-label">Mode</div>
+                </div>
+                <div className="hero__mini">
+                  <div className="hero__mini-number">${geminiLive ? "Live" : "Fallback"}</div>
+                  <div className="hero__mini-label">Generation</div>
                 </div>
                 <div className="hero__mini">
                   <div className="hero__mini-number">${stats.memoryFacts}</div>

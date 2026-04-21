@@ -1310,12 +1310,38 @@ button {
   font-size: 12px;
 }
 
+.sidebar__top .status {
+  margin-top: 12px;
+}
+
 .status__dot {
   width: 8px;
   height: 8px;
   border-radius: 999px;
   background: rgba(var(--accent-rgb), 0.95);
   box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.12);
+}
+
+.status--success {
+  border-color: rgba(86, 220, 166, 0.22);
+  background: rgba(86, 220, 166, 0.08);
+  color: rgba(220, 252, 231, 0.92);
+}
+
+.status--success .status__dot {
+  background: rgba(86, 220, 166, 0.98);
+  box-shadow: 0 0 0 4px rgba(86, 220, 166, 0.12);
+}
+
+.status--warning {
+  border-color: rgba(245, 158, 11, 0.24);
+  background: rgba(245, 158, 11, 0.08);
+  color: rgba(254, 240, 138, 0.94);
+}
+
+.status--warning .status__dot {
+  background: rgba(245, 158, 11, 0.98);
+  box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.14);
 }
 
 .modal {

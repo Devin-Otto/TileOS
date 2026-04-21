@@ -22,7 +22,8 @@ TileOS is a glassmorphic portfolio OS for showcasing live projects in-place.
    - `TILEOS_DATA_ROOT`
    - `ADMIN_PASSWORD`
    - `SESSION_SECRET`
-3. Add your Gemini key pool with `GEMINI_API_KEYS` as a comma-separated list.
+3. Add your Gemini key pool with `GEMINI_API_KEYS` as a comma-separated list when you want live AI generation.
+4. Leave `TILEOS_SECURE_COOKIES` unset unless you need to override the default HTTPS-aware cookie behavior.
 4. Run:
 
 ```bash
@@ -31,6 +32,18 @@ npm start
 
 The app serves from `http://localhost:9273` by default.
 
+## Local Demo Mode
+
+TileOS can boot without Gemini keys for proof-of-life and mounted showcase validation.
+
+- With `GEMINI_API_KEYS` configured, TileOS uses live server-side Gemini generation.
+- Without Gemini keys, TileOS stays usable in fallback demo mode:
+  - chat still works
+  - tile creation still works through built-in fallback generation
+  - admin publish, unpublish, reorder, and delete flows still work
+
+This is useful for local verification, public-safe demos, and CI checks where you want deterministic behavior without live provider calls.
+
 ## Container / Proxy Hosting
 
 TileOS can run as its own container while being presented inside another site.
@@ -38,7 +51,9 @@ TileOS can run as its own container while being presented inside another site.
 - Set `TILEOS_PUBLIC_URL` to the public mounted URL, for example `https://devcandoit.com/tileos/app`
 - Set `TILEOS_BASE_PATH=/tileos/app`
 - Set `TILEOS_DATA_ROOT=/data` and mount a persistent volume there
+- Leave `TILEOS_SECURE_COOKIES` unset in normal production use so Secure cookies follow the public HTTPS URL automatically
 - Proxy public traffic for `/tileos/app` into the TileOS container
+- For CI or local production-mode verification, set `TILEOS_DISABLE_DOTENV=1` so local secret files do not bleed into checks
 
 ## Security Notes
 
@@ -68,6 +83,7 @@ npm run verify:release
    - admin login is required for publish, unpublish, delete, and reorder
    - browser source and network responses do not expose secrets
    - the mounted public path matches `TILEOS_PUBLIC_URL` and `TILEOS_BASE_PATH`
+   - the mounted `/tileos/app` flow works end to end if TileOS is being proxied through DevCanDoIT
 
 ## Project Layout
 

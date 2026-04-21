@@ -40,10 +40,14 @@ function loadDotEnvFile(filePath) {
   });
 }
 
-loadDotEnvFile(path.join(ROOT, ".env"));
-loadDotEnvFile(path.join(ROOT, ".env.local"));
-if (process.env.NODE_ENV) {
-  loadDotEnvFile(path.join(ROOT, `.env.${process.env.NODE_ENV}.local`));
+const DOTENV_DISABLED = /^(1|true|yes)$/i.test(String(process.env.TILEOS_DISABLE_DOTENV || "").trim());
+
+if (!DOTENV_DISABLED) {
+  loadDotEnvFile(path.join(ROOT, ".env"));
+  loadDotEnvFile(path.join(ROOT, ".env.local"));
+  if (process.env.NODE_ENV) {
+    loadDotEnvFile(path.join(ROOT, `.env.${process.env.NODE_ENV}.local`));
+  }
 }
 
 function resolveStorageRoot(rootPath, fallbackPath) {
@@ -63,6 +67,16 @@ const HOST = process.env.HOST || "127.0.0.1";
 const APP_TITLE = process.env.APP_TITLE || "TileOS";
 const IS_PRODUCTION = String(process.env.NODE_ENV || "").toLowerCase() === "production";
 const TILEOS_PUBLIC_URL = String(process.env.TILEOS_PUBLIC_URL || "").trim() || `http://${HOST}:${PORT}`;
+const SHOULD_SECURE_COOKIES = (() => {
+  const explicit = String(process.env.TILEOS_SECURE_COOKIES || "").trim().toLowerCase();
+  if (["1", "true", "yes", "on"].includes(explicit)) return true;
+  if (["0", "false", "no", "off"].includes(explicit)) return false;
+  try {
+    return IS_PRODUCTION && new URL(TILEOS_PUBLIC_URL).protocol === "https:";
+  } catch {
+    return IS_PRODUCTION;
+  }
+})();
 const DEFAULT_PUBLIC_PATHNAME = (() => {
   try {
     return new URL(TILEOS_PUBLIC_URL).pathname;
@@ -166,18 +180,27 @@ function stripConfiguredBasePath(pathname) {
   return normalizedPath;
 }
 
-function getAllowedOrigin(req) {
+function normalizeOriginValue(value) {
+  try {
+    return new URL(String(value || "")).origin.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function getAllowedOrigins(req) {
+  const allowed = new Set();
   const forwardedHost = getForwardedHost(req);
   if (forwardedHost) {
-    return `${getForwardedProto(req)}://${forwardedHost}`;
+    allowed.add(normalizeOriginValue(`${getForwardedProto(req)}://${forwardedHost}`));
   }
 
-  try {
-    return new URL(TILEOS_PUBLIC_URL).origin;
-  } catch {
-    const host = req.headers.host || `${HOST}:${PORT}`;
-    return `http://${host}`;
-  }
+  const requestHost = req.headers.host || `${HOST}:${PORT}`;
+  const requestProto = forwardedHost ? getForwardedProto(req) : (req.socket?.encrypted ? "https" : "http");
+  allowed.add(normalizeOriginValue(`${requestProto}://${requestHost}`));
+  allowed.add(normalizeOriginValue(TILEOS_PUBLIC_URL));
+  allowed.delete("");
+  return allowed;
 }
 
 function getPublicBaseUrl(req) {
@@ -192,12 +215,9 @@ function assertAllowedOrigin(req) {
   const origin = req.headers.origin || req.headers.referer;
   if (!origin) return true;
 
-  try {
-    const parsed = new URL(origin);
-    return parsed.origin === getAllowedOrigin(req);
-  } catch {
-    return false;
-  }
+  const normalizedOrigin = normalizeOriginValue(origin);
+  if (!normalizedOrigin) return false;
+  return getAllowedOrigins(req).has(normalizedOrigin);
 }
 
 function requiredSecret(name, developmentFallback) {
@@ -534,7 +554,7 @@ function cookieAttributes(maxAgeMs) {
     `SameSite=Lax`,
     `Max-Age=${Math.max(1, Math.floor(maxAgeMs / 1000))}`
   ];
-  if (IS_PRODUCTION) {
+  if (SHOULD_SECURE_COOKIES) {
     attrs.push("Secure");
   }
   return attrs.join("; ");
@@ -549,7 +569,7 @@ function setAdminCookie(res) {
 
 function clearAdminCookie(res) {
   const attrs = ["HttpOnly", `Path=${TILEOS_BASE_PATH || "/"}`, "SameSite=Lax", "Max-Age=0"];
-  if (IS_PRODUCTION) {
+  if (SHOULD_SECURE_COOKIES) {
     attrs.push("Secure");
   }
   appendSetCookie(res, `${ADMIN_COOKIE_NAME}=; ${attrs.join("; ")}`);
@@ -2051,6 +2071,7 @@ function publicBootstrap(req, res) {
   const viewerProjects = projectsForViewer(stateCache.projects, viewer);
   const publishedCount = stateCache.projects.filter((project) => project.visibility === "published").length;
   const draftCount = viewerProjects.filter((project) => project.visibility === "draft").length;
+  const geminiAvailable = getGeminiKeyPool().length > 0;
 
   return {
     appTitle: APP_TITLE,
@@ -2060,8 +2081,14 @@ function publicBootstrap(req, res) {
     memory: memoryForViewer(stateCache, viewer),
     projects: viewerProjects,
     models: [
-      { id: "gemini", label: "Gemini", available: getGeminiKeyPool().length > 0 }
+      { id: "gemini", label: "Gemini", available: geminiAvailable }
     ],
+    generation: {
+      provider: "gemini",
+      available: geminiAvailable,
+      mode: geminiAvailable ? "live" : "fallback",
+      fallback: "local-template"
+    },
     manifest: {
       slug: "tileos",
       liveUrl: getPublicBaseUrl(req),
